@@ -1,0 +1,171 @@
+﻿@model IEnumerable<WebBanDienThoai.Models.Product>
+
+@{
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+    ViewData["Title"] = "Danh sách sản phẩm";
+}
+
+<h2 class="text-center text-primary mb-4">📋 Danh sách sản phẩm (Admin)</h2>
+
+<!-- Form tìm kiếm và sắp xếp -->
+<form method="get" class="mb-4 d-flex gap-2">
+    <input type="text" name="searchTerm" value="@ViewBag.CurrentSearch" class="form-control w-25"
+           placeholder="Nhập tên sản phẩm..." />
+
+    <select name="sortOrder" class="form-select w-25">
+        <option value="">Sắp xếp</option>
+        <option value="price_asc" selected="@(ViewBag.CurrentSort == "price_asc")"> Giá tăng dần</option>
+        <option value="price_desc" selected="@(ViewBag.CurrentSort == "price_desc")"> Giá giảm dần</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+</form>
+
+<a href="@Url.Action("Add", "Product", new { area = "Admin" })" class="btn btn-success mb-3">
+    <i class="fas fa-plus"></i> Thêm sản phẩm mới
+</a>
+
+<table class="table table-bordered table-hover shadow-sm">
+    <thead class="table-dark text-center">
+        <tr>
+            <th class="image-col">Hình ảnh</th>
+            <th class="name-col">Tên</th>
+            <th class="price-col">Giá</th>
+            <th class="discount-col">Giảm giá (%)</th> <!-- Cột mới cho Giảm giá -->
+            <th class="description-col">Mô tả</th>
+            <th class="category-col">Danh mục</th>
+            <th class="subcategory-col">Phân loại</th>
+            <th class="action-col">Hành động</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td class="image-col text-center">
+                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl" alt="Ảnh sản phẩm" width="80" height="80" class="rounded shadow-sm" />
+                    }
+                </td>
+                <td class="name-col">@item.Name</td>
+                <td class="price-col text-center">
+                    <strong>@item.Price.ToString("N0") VNĐ</strong>
+                </td>
+                <td class="discount-col text-center">
+                    @if (item.DiscountPercent > 0)
+                    {
+                        <span class="text-success">@item.DiscountPercent %</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Không có</span>
+                    }
+                </td> <!-- Hiển thị phần trăm giảm giá -->
+                <td class="description-col">
+                    <div class="description-text" title="@Html.Raw(item.Description)">
+                        @Html.Raw(item.Description)
+                    </div>
+                </td>
+                <td class="category-col">@item.Category?.Name</td>
+                <td class="subcategory-col">@item.SubCategory?.Name</td>
+                <td class="action-col text-center">
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <a href="@Url.Action("Display", "Product", new { area = "Admin", id = item.Id })" class="btn btn-info btn-sm w-100 mb-1">
+                            <i class="fas fa-eye"></i> Xem
+                        </a>
+                        <a href="@Url.Action("Update", "Product", new { area = "Admin", id = item.Id })" class="btn btn-warning btn-sm w-100 mb-1">
+                            <i class="fas fa-edit"></i> Sửa
+                        </a>
+                        <form action="@Url.Action("DeleteConfirmed", "Product", new { area = "Admin" })" method="post" style="width:100%;"
+                              onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này?');">
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm w-100">
+                                <i class="fas fa-trash"></i> Xóa
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>
+<style>
+    .table td, .table th {
+        vertical-align: middle !important;
+        padding: 8px;
+    }
+
+    .name-col {
+        width: 220px;
+        text-align: left;
+    }
+
+    .price-col {
+        width: 120px;
+        text-align: center;
+    }
+
+    .discount-col {
+        width: 80px; /* Giảm chiều rộng của cột Giảm giá */
+        text-align: center;
+    }
+
+    .description-col {
+        width: 260px;
+        max-width: 260px;
+        text-align: left;
+    }
+
+    .description-text {
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* Hiển thị 2 dòng */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.4em;
+        max-height: 2.8em; /* 1.4em x 2 dòng */
+    }
+
+    .image-col {
+        width: 90px;
+        text-align: center;
+    }
+
+    .category-col {
+        width: 120px;
+        text-align: center;
+    }
+
+    .subcategory-col {
+        width: 120px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+    }
+
+    .action-col {
+        width: 120px;
+        text-align: center;
+    }
+
+        .action-col .btn {
+            width: 100%;
+            margin-bottom: 7px;
+        }
+
+            .action-col .btn:last-child,
+            .action-col form:last-child .btn {
+                margin-bottom: 0 !important;
+            }
+
+        .action-col form {
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+</style>

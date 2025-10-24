@@ -1,0 +1,146 @@
+﻿@model List<WebBanDienThoai.Models.Order>
+
+@{
+    ViewData["Title"] = "Thống kê doanh thu";
+    Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
+
+    string type = ViewBag.Type as string ?? "month";
+
+    string chartLabels = "";
+    string chartData = "";
+
+    if (ViewBag.RevenueBy != null)
+    {
+        foreach (var item in (IEnumerable<dynamic>)ViewBag.RevenueBy)
+        {
+            chartLabels += $"\"{item.Label}\",";
+            chartData += $"{item.Total},";
+        }
+
+        if (chartLabels.Length > 0)
+            chartLabels = chartLabels.TrimEnd(',');
+
+        if (chartData.Length > 0)
+            chartData = chartData.TrimEnd(',');
+    }
+}
+
+<h2 class="mb-4 fw-bold">Thống kê doanh thu</h2>
+
+<!-- Form lọc -->
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <label class="form-label">Từ ngày</label>
+        <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Đến ngày</label>
+        <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Kiểu thống kê</label>
+        <select name="type" class="form-select">
+            @if (type == "day")
+            {
+                <option value="day" selected>Theo ngày</option>
+            }
+            else
+            {
+                <option value="day">Theo ngày</option>
+            }
+
+            @if (type == "month")
+            {
+                <option value="month" selected>Theo tháng</option>
+            }
+            else
+            {
+                <option value="month">Theo tháng</option>
+            }
+
+            @if (type == "year")
+            {
+                <option value="year" selected>Theo năm</option>
+            }
+            else
+            {
+                <option value="year">Theo năm</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2 align-self-end">
+        <button class="btn btn-primary">Lọc</button>
+    </div>
+</form>
+
+<!-- Tổng doanh thu -->
+<div class="alert alert-info">
+    <strong>Tổng doanh thu:</strong> @ViewBag.TotalRevenue.ToString("N0") ₫ <br />
+    <strong>Số đơn hàng:</strong> @ViewBag.TotalOrders
+</div>
+
+<!-- Biểu đồ doanh thu -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Biểu đồ doanh thu</h5>
+        <canvas id="revenueChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Bảng đơn hàng -->
+<table class="table table-bordered table-hover">
+    <thead class="table-light">
+        <tr>
+            <th>Ngày</th>
+            <th>Khách hàng</th>
+            <th>Tổng tiền</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var o in Model)
+        {
+            <tr>
+                <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
+                <td>@o.ApplicationUser?.FullName</td>
+                <td>@o.TotalPrice.ToString("N0") ₫</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        const revenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(chartLabels)],
+                datasets: [{
+                    label: 'Doanh thu (VNĐ)',
+                    data: [@Html.Raw(chartData)],
+                    backgroundColor: '#4e73df',
+                    borderColor: '#4e73df',
+                    borderWidth: 1,
+                    barThickness: 60
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        categoryPercentage: 0.6,
+                        barPercentage: 0.8
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString("vi-VN") + " ₫";
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+}

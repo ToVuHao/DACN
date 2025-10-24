@@ -1,0 +1,300 @@
+﻿@using WebBanDienThoai.Extensions
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<WebBanDienThoai.Models.ApplicationUser> SignInManager
+@inject UserManager<WebBanDienThoai.Models.ApplicationUser> UserManager
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - Shop Điện Thoại</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link href="~/css/site.css" rel="stylesheet" />
+
+    <link href="~/css/site.css" rel="stylesheet" />
+
+    <style>
+        nav.navbar.bg-danger {
+            position: sticky;
+            top: 0;
+            z-index: 1040;
+        }
+
+        nav.navbar.bg-white {
+            position: sticky;
+            top: 56px; /* Nếu header trên cao hơn thì tăng số này! */
+            z-index: 1039;
+        }
+        /* Đảm bảo dropdown menu nổi lên */
+        .dropdown-menu {
+            z-index: 3000 !important;
+        }
+            /* Nới dropdown khỏi header trắng (nếu cần) */
+            .dropdown-menu[aria-labelledby="userDropdown"] {
+                margin-top: 8px;
+            }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <!-- Header trên: logo, tìm kiếm, giỏ hàng, tài khoản -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-danger py-2">
+            <div class="container align-items-center">
+                <a class="navbar-brand d-flex align-items-center" href="/">
+                    <img src="https://cdn2.fptshop.com.vn/unsafe/150x0/filters:quality(100)/small/logo_main_bd97bfd12c.png"
+                         alt="Logo" style="width: 150px; height: auto; margin-right: 8px;">
+                    <span class="fw-bold ms-1">Shop Điện Thoại</span>
+                </a>
+
+                <form class="d-flex flex-grow-1 mx-4 search-bar" action="@Url.Action("Index", "Product")" method="get">
+                    <div class="input-group w-100">
+                        <input class="form-control search-input" type="search" name="query" placeholder="Nhập tên sản phẩm..." value="@Context.Request.Query["query"]">
+                        <button class="btn btn-outline-secondary" type="submit" title="Tìm kiếm">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" onclick="startVoiceSearch()" title="Tìm bằng giọng nói">
+                            <i class="bi bi-mic"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="d-flex align-items-center ms-2">
+                    <!-- Yêu thích -->
+                    @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Admin") && !User.IsInRole("Employer"))
+                    {
+                        <a class="btn btn-outline-light me-2 position-relative" asp-area="" asp-controller="Wishlist" asp-action="Index">
+                            <i class="bi bi-heart fs-5"></i>
+                        </a>
+                    }
+                    <!-- Giỏ hàng -->
+                    @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Admin") && !User.IsInRole("Employer"))
+                    {
+                        <a class="btn btn-outline-light position-relative me-2" asp-area="" asp-controller="ShoppingCart" asp-action="Index">
+                            <i class="bi bi-cart"></i> Giỏ Hàng
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" id="cartCount">
+                                @(Context.Session.GetObjectFromJson<ShoppingCart>("Cart")?.Items.Count ?? 0)
+                            </span>
+                        </a>
+                    }
+                    else if (!SignInManager.IsSignedIn(User))
+                    {
+                        <a href="@Url.Page("/Account/Login", new { area = "Identity", returnUrl = "/ShoppingCart" })"
+                           class="btn btn-outline-light position-relative me-2">
+                            <i class="bi bi-cart"></i> Giỏ Hàng
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" id="cartCount">0</span>
+                        </a>
+                    }
+                    <!-- Login partial -->
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+
+        <!-- Header dưới: menu điều hướng -->
+        <nav class="navbar navbar-expand navbar-light bg-white border-bottom shadow-sm" style="min-height:45px">
+            <div class="container">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-danger" asp-area="" asp-controller="Home" asp-action="Index">
+                            <i class="bi bi-house-door"></i> Trang Chủ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-primary" asp-area="" asp-controller="Product" asp-action="Index">
+                            <i class="bi bi-phone"></i> Sản phẩm
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-info" asp-controller="News" asp-action="Index">
+                            <i class="bi bi-newspaper"></i> Tin tức
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-dark" asp-area="" asp-controller="Home" asp-action="Policy" asp-route-type="baohanh" title="Chính sách sản phẩm">
+                            <i class="bi bi-info-circle"></i> Chính Sách
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-success" asp-controller="About" asp-action="Index">
+                            <i class="bi bi-building"></i> Giới thiệu
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold text-warning" asp-controller="Contact" asp-action="Index">
+                            <i class="bi bi-envelope"></i> Liên hệ
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Banner quảng cáo -->
+        <div class="container mt-3">
+            <div id="carouselExample" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    <div class="carousel-item active">
+                        <img src="https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:quality(100)/desk_header_93f303158c.png"
+                             class="d-block w-100"
+                             alt="Banner 1">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:quality(100)/desk_header_ebe5e971fc.png"
+                             class="d-block w-100"
+                             alt="Banner 2">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:quality(100)/desk_header_ebb29a244f.png"
+                             class="d-block w-100"
+                             alt="Banner 3">
+                    </div>
+                </div>
+                <button class="carousel-control-prev"
+                        type="button"
+                        data-bs-target="#carouselExample"
+                        data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+                <button class="carousel-control-next"
+                        type="button"
+                        data-bs-target="#carouselExample"
+                        data-bs-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Nội dung chính -->
+        <div class="container mt-4 content">
+            @RenderBody()
+        </div>
+
+        <!-- Footer -->
+        <!-- Footer -->
+        <footer class="bg-dark text-white pt-5 pb-4 mt-5">
+            <div class="container">
+                <div class="row row-cols-1 row-cols-md-4 g-4">
+                    <!-- Thương hiệu -->
+                    <div class="col">
+                        <h6 class="text-uppercase fw-bold">Thương hiệu đảm bảo</h6>
+                        <ul class="list-unstyled">
+                            <li>Nhập khẩu, bảo hành chính hãng</li>
+                            <li>Đổi trả dễ dàng tại FPT Shop</li>
+                        </ul>
+                    </div>
+
+                    <!-- Chính sách -->
+                    <div class="col">
+                        <h6 class="text-uppercase fw-bold">Các Chính sách</h6>
+                        <ul class="list-unstyled">
+                            <li><a href="/Home/Policy?type=baohanh" class="text-white text-decoration-none">Chính sách bảo hành</a></li>
+                            <li><a href="/Home/Policy?type=doitra" class="text-white text-decoration-none">Chính sách đổi trả</a></li>
+                            <li><a href="/Home/Policy?type=baomat" class="text-white text-decoration-none">Chính sách bảo mật</a></li>
+
+                        </ul>
+                    </div>
+
+                    <!-- Kết nối -->
+                    <div class="col">
+                        <h6 class="text-uppercase fw-bold">Kết nối với FPT Shop</h6>
+                        <ul class="list-unstyled">
+                            <li><a href="https://www.facebook.com/FPTShopOnline" class="text-white text-decoration-none" target="_blank"><i class="fab fa-facebook me-2"></i>Facebook</a></li>
+                            <li><a href="https://www.tiktok.com/@@fptshop.official" class="text-white text-decoration-none" target="_blank"><i class="fab fa-tiktok me-2"></i>TikTok</a></li>
+                            <li><a href="https://www.youtube.com/@@FPTShop_" class="text-white text-decoration-none" target="_blank"><i class="fab fa-youtube me-2"></i>YouTube</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Hỗ trợ thanh toán -->
+                    <div class="col">
+                        <h6 class="text-uppercase fw-bold">Hỗ trợ thanh toán</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <img src="https://cdn2.fptshop.com.vn/svg/visa_icon_44fe6e15ed.svg?w=48&q=100" alt="Visa" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/mastercard_icon_c75f94f6a5.svg?w=48&q=100" alt="MasterCard" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/jcb_icon_214783937c.svg?w=48&q=100" alt="JCB" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/amex_icon_d6fb68108d.svg?w=48&q=100" alt="Amex" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/vnpay_icon_f42045057d.svg?w=48&q=100" alt="VNPAY" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/momo_icon_baef21b5f7.svg?w=48&q=100" alt="Momo" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/googlepay_icon_afa293cc14.svg?w=48&q=100" alt="Google Pay" width="48">
+                            <img src="https://cdn2.fptshop.com.vn/svg/alepay_icon_20d5310617.svg?w=48&q=100" alt="Apple Pay" width="48">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 text-muted">
+                    © 2025 FPT Shop. Tất cả quyền lợi được bảo lưu.
+                </div>
+            </div>
+        </footer>
+
+    </div>
+    <script>
+        function updateCartCount() {
+            fetch('/ShoppingCart/GetCartCount')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('cartCount').innerText = data.count;
+                });
+        }
+
+        updateCartCount(); // Cập nhật số giỏ hàng khi trang load
+
+
+    </script>
+    <script>
+        function startVoiceSearch() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'vi-VN';  // Đặt ngôn ngữ là tiếng Việt
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                console.log("Đang nghe...");
+            };
+
+            recognition.onresult = function(event) {
+                let searchQuery = event.results[0][0].transcript;
+                console.log("Tìm kiếm với từ khóa:", searchQuery);
+
+                // Loại bỏ dấu chấm ở cuối từ khóa nếu có
+                searchQuery = searchQuery.replace(/\.$/, '');
+
+                document.querySelector('input[name="query"]').value = searchQuery;
+                document.querySelector('form').submit();  // Gửi form tìm kiếm sau khi nhận diện giọng nói
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Lỗi nhận diện giọng nói: ", event.error);
+            };
+
+            recognition.onend = function() {
+                console.log("Kết thúc nhận diện.");
+            };
+
+            recognition.start(); // Bắt đầu nhận diện giọng nói
+        }
+    </script>
+    <!-- Bootstrap & Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    @await RenderSectionAsync("Scripts", required: false)
+    <partial name="_ChatBox" />
+</body>
+</html>
