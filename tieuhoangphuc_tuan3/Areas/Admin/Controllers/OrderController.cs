@@ -50,12 +50,47 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         [HttpPost]
         public IActionResult UpdateStatus(int id, OrderStatus status)
         {
-            var order = _db.Orders.Find(id);
+            var order = _db.Orders
+                .Include(o => o.OrderDetails)
+                .FirstOrDefault(o => o.Id == id);
+
             if (order == null) return NotFound();
 
+            // Cập nhật trạng thái đơn hàng
             order.Status = status;
+
+            // 🧭 Nếu đơn hàng được hoàn tất => tự động trừ hàng tồn kho
+            if (status == OrderStatus.HoanTat)
+            {
+                foreach (var item in order.OrderDetails)
+                {
+                    var product = _db.Products.FirstOrDefault(p => p.Id == item.ProductId);
+                    if (product != null)
+                    {
+                        product.Quantity -= item.Quantity;
+                        product.LastExportDate = DateTime.Now;
+                    }
+                }
+            }
+
+            if (status == OrderStatus.TraHang)
+            {
+                foreach (var item in order.OrderDetails)
+                {
+                    var product = _db.Products.FirstOrDefault(p => p.Id == item.ProductId);
+                    if (product != null)
+                    {
+                        product.Quantity += item.Quantity;
+                        product.LastImportDate = DateTime.Now;
+                    }
+                }
+            }
+
             _db.SaveChanges();
+            TempData["SuccessMessage"] = "Trạng thái đơn hàng đã được cập nhật!";
+
             return RedirectToAction("Details", new { id = id });
         }
+
     }
 }

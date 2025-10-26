@@ -1,7 +1,7 @@
 ﻿@model List<WebBanDienThoai.Models.Order>
 
 @{
-    ViewData["Title"] = "Thống kê doanh thu";
+    ViewData["Title"] = "Thống kê doanh thu & Quản lý kho thông minh";
     Layout = "~/Areas/Admin/Views/Shared/_AdminLayout.cshtml";
 
     string type = ViewBag.Type as string ?? "month";
@@ -25,88 +25,131 @@
     }
 }
 
-<h2 class="mb-4 fw-bold">Thống kê doanh thu</h2>
+<h2 class="mb-4 fw-bold text-primary">
+    📊 Thống kê doanh thu & Báo cáo kho
+</h2>
 
 <!-- Form lọc -->
-<form method="get" class="row g-3 mb-4">
+<form method="get" class="row g-3 mb-4 shadow-sm p-3 bg-light rounded">
     <div class="col-md-3">
-        <label class="form-label">Từ ngày</label>
+        <label class="form-label fw-semibold">Từ ngày</label>
         <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
     </div>
     <div class="col-md-3">
-        <label class="form-label">Đến ngày</label>
+        <label class="form-label fw-semibold">Đến ngày</label>
         <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
     </div>
     <div class="col-md-3">
-        <label class="form-label">Kiểu thống kê</label>
+        <label class="form-label fw-semibold">Kiểu thống kê</label>
         <select name="type" class="form-select">
-            @if (type == "day")
-            {
-                <option value="day" selected>Theo ngày</option>
-            }
-            else
-            {
-                <option value="day">Theo ngày</option>
-            }
-
-            @if (type == "month")
-            {
-                <option value="month" selected>Theo tháng</option>
-            }
-            else
-            {
-                <option value="month">Theo tháng</option>
-            }
-
-            @if (type == "year")
-            {
-                <option value="year" selected>Theo năm</option>
-            }
-            else
-            {
-                <option value="year">Theo năm</option>
-            }
+            <option value="day" selected="@(type == "day")">Theo ngày</option>
+            <option value="month" selected="@(type == "month")">Theo tháng</option>
+            <option value="year" selected="@(type == "year")">Theo năm</option>
         </select>
     </div>
     <div class="col-md-2 align-self-end">
-        <button class="btn btn-primary">Lọc</button>
+        <button class="btn btn-primary w-100">
+            <i class="bi bi-funnel"></i> Lọc
+        </button>
     </div>
 </form>
 
 <!-- Tổng doanh thu -->
-<div class="alert alert-info">
+<div class="alert alert-info shadow-sm">
     <strong>Tổng doanh thu:</strong> @ViewBag.TotalRevenue.ToString("N0") ₫ <br />
     <strong>Số đơn hàng:</strong> @ViewBag.TotalOrders
 </div>
 
 <!-- Biểu đồ doanh thu -->
-<div class="card mb-4">
+<div class="card mb-4 shadow-sm">
     <div class="card-body">
-        <h5 class="card-title">Biểu đồ doanh thu</h5>
+        <h5 class="card-title fw-semibold">📈 Biểu đồ doanh thu</h5>
         <canvas id="revenueChart" height="100"></canvas>
     </div>
 </div>
 
-<!-- Bảng đơn hàng -->
-<table class="table table-bordered table-hover">
-    <thead class="table-light">
-        <tr>
-            <th>Ngày</th>
-            <th>Khách hàng</th>
-            <th>Tổng tiền</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var o in Model)
-        {
-            <tr>
-                <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
-                <td>@o.ApplicationUser?.FullName</td>
-                <td>@o.TotalPrice.ToString("N0") ₫</td>
-            </tr>
-        }
-    </tbody>
-</table>
+<!-- Bảng danh sách đơn hàng -->
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-secondary text-white fw-semibold">
+        Danh sách đơn hàng hoàn tất
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="table-light">
+                <tr class="text-center">
+                    <th>Ngày đặt</th>
+                    <th>Khách hàng</th>
+                    <th>Tổng tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Model)
+                {
+                    <tr>
+                        <td>@o.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td>@o.ApplicationUser?.FullName</td>
+                        <td class="text-end">@o.TotalPrice.ToString("N0") ₫</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ========================== -->
+<!-- 📦 BÁO CÁO TỒN KHO -->
+<!-- ========================== -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white fw-semibold d-flex justify-content-between align-items-center">
+        <span>📦 Báo cáo tồn kho sản phẩm</span>
+        <a href="@Url.Action("ExportInventoryToCsv", "Report", new { area = "Admin" })" class="btn btn-light btn-sm">
+            <i class="bi bi-download"></i> Xuất CSV
+        </a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="table-light">
+                <tr class="text-center">
+                    <th>Tên sản phẩm</th>
+                    <th>Tồn kho</th>
+                    <th>Ngưỡng cảnh báo</th>
+                    <th>Giá</th>
+                    <th>Giá trị tồn (VNĐ)</th>
+                    <th>Ngày nhập gần nhất</th>
+                    <th>Ngày xuất gần nhất</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.Inventory != null)
+                {
+                    foreach (var p in (IEnumerable<dynamic>)ViewBag.Inventory)
+                    {
+                        <tr class="@(p.Quantity <= p.MinStockLevel ? "table-warning" : "")">
+                            <td>@p.Name</td>
+                            <td class="text-center">
+                                <span class="badge @(p.Quantity <= p.MinStockLevel ? "bg-danger" : "bg-success")">
+                                    @p.Quantity
+                                </span>
+                            </td>
+                            <td class="text-center">@p.MinStockLevel</td>
+                            <td class="text-end">@p.Price.ToString("N0") ₫</td>
+                            <td class="text-end fw-semibold">@p.TotalValue.ToString("N0") ₫</td>
+                            <td class="text-center">@p.LastImportDate?.ToString("dd/MM/yyyy")</td>
+                            <td class="text-center">@p.LastExportDate?.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td colspan="4" class="text-end">Tổng giá trị tồn kho:</td>
+                    <td class="text-end text-danger">@ViewBag.TotalInventoryValue.ToString("N0") ₫</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -126,15 +169,22 @@
                 }]
             },
             options: {
+                responsive: true,
                 scales: {
                     x: {
-                        categoryPercentage: 0.6,
-                        barPercentage: 0.8
+                        title: {
+                            display: true,
+                            text: 'Thời gian'
+                        }
                     },
                     y: {
                         beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Doanh thu (VNĐ)'
+                        },
                         ticks: {
-                            callback: function(value) {
+                            callback: function (value) {
                                 return value.toLocaleString("vi-VN") + " ₫";
                             }
                         }

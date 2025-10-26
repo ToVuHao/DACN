@@ -27,6 +27,18 @@
         <span asp-validation-for="DiscountPercent" class="text-danger"></span>
     </div>
 
+    <!-- ⚙️ Tồn kho -->
+    <div class="form-group mb-3">
+        <label asp-for="Quantity" class="form-label">Số lượng tồn kho</label>
+        <input asp-for="Quantity" type="number" class="form-control" placeholder="Nhập số lượng tồn..." min="0" required />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="MinStockLevel" class="form-label">Ngưỡng cảnh báo tồn kho</label>
+        <input asp-for="MinStockLevel" type="number" class="form-control" placeholder="Nhập ngưỡng cảnh báo (VD: 5)" min="0" />
+        <span asp-validation-for="MinStockLevel" class="text-danger"></span>
+    </div>
 
     <div class="form-group mb-3">
         <label asp-for="CategoryId" class="form-label">Danh mục</label>
@@ -36,7 +48,6 @@
         <span asp-validation-for="CategoryId" class="text-danger"></span>
     </div>
 
-    <!-- SubCategory -->
     <div class="form-group mb-3">
         <label asp-for="SubCategoryId" class="form-label">Hãng</label>
         <select asp-for="SubCategoryId" class="form-control" id="SubCategoryId">
@@ -49,7 +60,6 @@
                 }
             }
         </select>
-        <span asp-validation-for="SubCategoryId" class="text-danger"></span>
     </div>
 
     <div class="form-group mb-3">
@@ -60,73 +70,50 @@
                  style="max-width: 200px; border: 1px solid #ddd; padding: 5px;" />
         </div>
     </div>
+
     <div class="form-group mb-3">
         <label asp-for="Description" class="form-label">Mô tả sản phẩm</label>
         <textarea asp-for="Description" class="form-control" id="editor" rows="5" placeholder="Nhập mô tả..." required></textarea>
         <span asp-validation-for="Description" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-success">Lưu sản phẩm</button>
-    <a asp-action="Index" asp-area="Admin" asp-controller="Product" class="btn btn-secondary ms-2">Quay lại</a>
+    <button type="submit" class="btn btn-success">💾 Lưu sản phẩm</button>
+    <a asp-action="Index" asp-area="Admin" asp-controller="Product" class="btn btn-secondary ms-2">⬅️ Quay lại</a>
 </form>
 
 @section Scripts {
     <script src="https://cdn.ckeditor.com/ckeditor5/39.0.0/classic/ckeditor.js"></script>
     <script>
-        ClassicEditor
-            .create(document.querySelector('#editor'))
-            .catch(error => {
-                console.error('Lỗi CKEditor:', error);
-            });
+        ClassicEditor.create(document.querySelector('#editor')).catch(console.error);
 
-        // Hiển thị ảnh xem trước
-        document.getElementById("imageInput").addEventListener("change", function (event) {
-            const file = event.target.files[0];
+        document.getElementById("imageInput").addEventListener("change", e => {
+            const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function (e) {
+                reader.onload = ev => {
                     const img = document.getElementById("previewImage");
-                    img.src = e.target.result;
+                    img.src = ev.target.result;
                     img.classList.remove("d-none");
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-  
-
-        // Tính giá sau giảm và hiển thị
-        document.getElementById("DiscountPercent").addEventListener("input", function () {
-            const price = parseFloat(document.getElementById("Price").value);
-            const discountPercent = parseFloat(document.getElementById("DiscountPercent").value);
-            if (price && discountPercent >= 0 && discountPercent <= 100) {
-                const discountedPrice = price - (price * discountPercent / 100);
-                document.getElementById("discountedPrice").value = discountedPrice.toFixed(0) + " VNĐ";
-            } else {
-                document.getElementById("discountedPrice").value = "0 VNĐ";
-            }
-        });
-
-        // --- LẤY SUBCATEGORY DYNAMIC ---
         document.getElementById("CategoryId").addEventListener("change", function () {
-            var categoryId = this.value;
-            var subCategoryDropdown = document.getElementById("SubCategoryId");
-            // Xóa hết option cũ
-            subCategoryDropdown.innerHTML = '<option value="">-- Chọn hãng --</option>';
+            const categoryId = this.value;
+            const subDropdown = document.getElementById("SubCategoryId");
+            subDropdown.innerHTML = '<option value="">-- Chọn hãng --</option>';
             if (categoryId) {
                 fetch('/Admin/Product/GetSubCategories?categoryId=' + categoryId)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(function (item) {
-                            var option = document.createElement("option");
-                            option.value = item.id;
-                            option.text = item.name;
-                            subCategoryDropdown.appendChild(option);
-                        });
-                    });
+                    .then(r => r.json())
+                    .then(data => data.forEach(i => {
+                        const option = document.createElement("option");
+                        option.value = i.id;
+                        option.text = i.name;
+                        subDropdown.appendChild(option);
+                    }));
             }
         });
     </script>
-
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }

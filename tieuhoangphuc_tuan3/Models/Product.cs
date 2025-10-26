@@ -18,5 +18,10 @@ namespace WebBanDienThoai.Models
             public decimal DiscountedPrice { get; set; } // Để lưu giá sau giảm
             public int? SubCategoryId { get; set; }
             public SubCategory? SubCategory { get; set; }
+            public int Quantity { get; set; }              // Số lượng hiện tại
+            public int MinStockLevel { get; set; }     // Mức tồn kho tối thiểu
+            public DateTime? LastImportDate { get; set; }  // Ngày nhập hàng gần nhất
+            public DateTime? LastExportDate { get; set; }  // Ngày xuất hàng gần nhất
+
     }
 }

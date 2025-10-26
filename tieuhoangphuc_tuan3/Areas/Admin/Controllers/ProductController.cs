@@ -26,12 +26,15 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         public async Task<IActionResult> Index(string searchTerm, string sortOrder)
         {
             var products = await _productRepository.GetAllAsync();
+
+            // --- Tìm kiếm ---
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 products = products.Where(p => p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                                                p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
+            // --- Sắp xếp ---
             switch (sortOrder)
             {
                 case "price_asc":
@@ -41,6 +44,10 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                     products = products.OrderByDescending(p => p.Price).ToList();
                     break;
             }
+
+            // --- Cảnh báo tồn kho thấp ---
+            var lowStockProducts = products.Where(p => p.Quantity <= p.MinStockLevel).ToList();
+            ViewBag.LowStockProducts = lowStockProducts;
 
             ViewBag.CurrentSearch = searchTerm;
             ViewBag.CurrentSort = sortOrder;
@@ -55,7 +62,6 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
             var categories = await _categoryRepository.GetAllAsync();
             ViewBag.Categories = new SelectList(categories, "Id", "Name");
 
-            // Ban đầu, chưa chọn Category => lấy hết hoặc không có SubCategory
             var subCategories = _context.SubCategories.ToList();
             ViewBag.SubCategories = new SelectList(subCategories, "Id", "Name");
 
@@ -68,7 +74,7 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Lưu ảnh chính
+                // Ảnh sản phẩm
                 if (imageUrl != null)
                 {
                     product.ImageUrl = await SaveImage(imageUrl);
@@ -76,20 +82,19 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
 
                 // Tính giá sau giảm
                 if (product.Price > 0 && product.DiscountPercent > 0)
-                {
                     product.DiscountedPrice = product.Price - (product.Price * product.DiscountPercent / 100);
-                }
                 else
-                {
                     product.DiscountedPrice = product.Price;
-                }
+
+                // Cập nhật ngày nhập hàng
+                product.LastImportDate = DateTime.Now;
 
                 await _productRepository.AddAsync(product);
                 TempData["SuccessMessage"] = "Sản phẩm đã được thêm thành công!";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Nếu có lỗi, trả lại view với danh sách Category/SubCategory
+            // Nếu lỗi
             var categories = await _categoryRepository.GetAllAsync();
             ViewBag.Categories = new SelectList(categories, "Id", "Name", product.CategoryId);
 
@@ -106,9 +111,8 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         {
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null)
-            {
                 return NotFound();
-            }
+
             return View(product);
         }
 
@@ -117,9 +121,8 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         {
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null)
-            {
                 return NotFound();
-            }
+
             var categories = await _categoryRepository.GetAllAsync();
             ViewBag.Categories = new SelectList(categories, "Id", "Name", product.CategoryId);
 
@@ -136,37 +139,28 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         public async Task<IActionResult> Update(int id, Product product, IFormFile imageUrl, IFormFile[] additionalImages)
         {
             ModelState.Remove("ImageUrl");
-
             if (id != product.Id)
-            {
                 return NotFound();
-            }
 
             if (ModelState.IsValid)
             {
                 var existingProduct = await _productRepository.GetByIdAsync(id);
+                if (existingProduct == null)
+                    return NotFound();
 
-                // Lưu ảnh chính mới (nếu có)
+                // Ảnh
                 if (imageUrl != null)
-                {
                     product.ImageUrl = await SaveImage(imageUrl);
-                }
                 else
-                {
                     product.ImageUrl = existingProduct.ImageUrl;
-                }
 
-                // Tính giá sau giảm
+                // Giá sau giảm
                 if (product.Price > 0 && product.DiscountPercent > 0)
-                {
                     product.DiscountedPrice = product.Price - (product.Price * product.DiscountPercent / 100);
-                }
                 else
-                {
                     product.DiscountedPrice = product.Price;
-                }
 
-                // Cập nhật các thuộc tính khác của sản phẩm
+                // Cập nhật dữ liệu
                 existingProduct.Name = product.Name;
                 existingProduct.Price = product.Price;
                 existingProduct.Description = product.Description;
@@ -176,8 +170,14 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                 existingProduct.ImageUrl = product.ImageUrl;
                 existingProduct.DiscountedPrice = product.DiscountedPrice;
 
-                await _productRepository.UpdateAsync(existingProduct);
+                // 🧭 Kiểm tra thay đổi số lượng → cập nhật ngày nhập
+                if (product.Quantity > existingProduct.Quantity)
+                    existingProduct.LastImportDate = DateTime.Now;
 
+                existingProduct.Quantity = product.Quantity;
+                existingProduct.MinStockLevel = product.MinStockLevel;
+
+                await _productRepository.UpdateAsync(existingProduct);
                 TempData["SuccessMessage"] = "Sản phẩm đã được cập nhật thành công!";
                 return RedirectToAction(nameof(Index));
             }
@@ -198,9 +198,8 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         {
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null)
-            {
                 return NotFound();
-            }
+
             return View(product);
         }
 
@@ -210,9 +209,8 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         {
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null)
-            {
                 return NotFound();
-            }
+
             if (product.Images != null && product.Images.Any())
             {
                 foreach (var image in product.Images)
@@ -220,17 +218,17 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                     _context.ProductImages.Remove(image);
                     var imagePath = Path.Combine("wwwroot/images", Path.GetFileName(image.Url));
                     if (System.IO.File.Exists(imagePath))
-                    {
                         System.IO.File.Delete(imagePath);
-                    }
                 }
                 await _context.SaveChangesAsync();
             }
+
             await _productRepository.DeleteAsync(id);
-            TempData["SuccessMessage"] = "Sản phẩm và các ảnh liên kết đã được xóa thành công!";
-            return RedirectToAction("Index", "Product", new { area = "Admin" });
+            TempData["SuccessMessage"] = "Sản phẩm và ảnh liên kết đã được xóa thành công!";
+            return RedirectToAction(nameof(Index));
         }
 
+        // 🖼️ Lưu ảnh
         private async Task<string> SaveImage(IFormFile image)
         {
             var savePath = Path.Combine("wwwroot/images", image.FileName);
@@ -241,7 +239,7 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
             return "/images/" + image.FileName;
         }
 
-        // ======== API FILTER SUBCATEGORY DYNAMIC (AJAX) =========
+        // 🧩 Lấy SubCategory động
         [HttpGet]
         public JsonResult GetSubCategories(int categoryId)
         {
@@ -249,6 +247,7 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                 .Where(s => s.CategoryId == categoryId)
                 .Select(s => new { s.Id, s.Name })
                 .ToList();
+
             return Json(subcats);
         }
     }
