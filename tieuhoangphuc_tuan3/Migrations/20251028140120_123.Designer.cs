@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace WebBanDienThoai.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251026080307_kk")]
-    partial class kk
+    [Migration("20251028140120_123")]
+    partial class _123
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

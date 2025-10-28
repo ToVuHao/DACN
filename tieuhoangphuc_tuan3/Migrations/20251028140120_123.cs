@@ -312,7 +312,11 @@ namespace WebBanDienThoai.Migrations
                     Rating = table.Column<double>(type: "float", nullable: false),
                     DiscountPercent = table.Column<int>(type: "int", nullable: false),
                     DiscountedPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    SubCategoryId = table.Column<int>(type: "int", nullable: true)
+                    SubCategoryId = table.Column<int>(type: "int", nullable: true),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    MinStockLevel = table.Column<int>(type: "int", nullable: false),
+                    LastImportDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastExportDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
