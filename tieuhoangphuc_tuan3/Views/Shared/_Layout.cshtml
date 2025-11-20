@@ -294,6 +294,84 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .build();
+
+        // === Thông báo Tin tức ===
+        connection.on("ReceiveNewsNotification", function (title, summary, url, createdAt) {
+            const container = document.createElement('div');
+            container.className = "toast align-items-center text-bg-primary border-0 position-fixed bottom-0 end-0 m-3";
+            container.setAttribute("role", "alert");
+            container.setAttribute("aria-live", "assertive");
+            container.setAttribute("aria-atomic", "true");
+            container.style.zIndex = 9999;
+
+            container.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <div class="fw-bold mb-1">
+                            <i class="bi bi-newspaper"></i> Tin tức mới
+                        </div>
+                        <div>${title}</div>
+                        <small class="text-light-50">${createdAt ?? ""}</small>
+                        ${summary ? `<div class="mt-1 small">${summary}</div>` : ""}
+                        ${url ? `
+                            <div class="mt-2">
+                                <a href="${url}" class="text-white text-decoration-underline">
+                                    Xem chi tiết
+                                </a>
+                            </div>` : ""}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+
+            document.body.appendChild(container);
+            const toast = new bootstrap.Toast(container, { delay: 5000 });
+            toast.show();
+            container.addEventListener('hidden.bs.toast', () => container.remove());
+        });
+
+        // === Thông báo Sản phẩm ===
+        connection.on("ReceiveProductNotification", function (title, summary, url, createdAt) {
+            const container = document.createElement('div');
+            container.className = "toast align-items-center text-bg-success border-0 position-fixed bottom-0 end-0 m-3";
+            container.setAttribute("role", "alert");
+            container.setAttribute("aria-live", "assertive");
+            container.setAttribute("aria-atomic", "true");
+            container.style.zIndex = 9999;
+
+            container.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <div class="fw-bold mb-1">
+                            <i class="bi bi-phone"></i> ${title}
+                        </div>
+                        ${summary ? `<div>${summary}</div>` : ""}
+                        <small class="text-light-50 d-block mt-1">${createdAt ?? ""}</small>
+                        ${url ? `
+                            <div class="mt-2">
+                                <a href="${url}" class="text-white text-decoration-underline">
+                                    Xem chi tiết
+                                </a>
+                            </div>` : ""}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+
+            document.body.appendChild(container);
+            const toast = new bootstrap.Toast(container, { delay: 5000 });
+            toast.show();
+            container.addEventListener('hidden.bs.toast', () => container.remove());
+        });
+
+        connection.start().catch(err => console.error("ChatHub connect error:", err));
+    </script>
+
+
     @await RenderSectionAsync("Scripts", required: false)
     <partial name="_ChatBox" />
 </body>

@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using WebBanDienThoai.Models;
 using WebBanDienThoai.Repositories;
+using WebBanDienThoai.Services.SignalR; // ChatHub
 
 namespace WebBanDienThoai.Areas.Admin.Controllers
 {
@@ -14,12 +16,18 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
         private readonly ApplicationDbContext _context;
+        private readonly IHubContext<ChatHub> _chatHub;     // 🔔
 
-        public ProductController(IProductRepository productRepository, ICategoryRepository categoryRepository, ApplicationDbContext context)
+        public ProductController(
+            IProductRepository productRepository,
+            ICategoryRepository categoryRepository,
+            ApplicationDbContext context,
+            IHubContext<ChatHub> chatHub)                   // 🔔
         {
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
             _context = context;
+            _chatHub = chatHub;                             // 🔔
         }
 
         [Authorize(Roles = SD.Role_Admin + "," + SD.Role_Employer)]
@@ -90,6 +98,20 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                 product.LastImportDate = DateTime.Now;
 
                 await _productRepository.AddAsync(product);
+
+                // 🔔 PUSH: Sản phẩm mới
+                var url = Url.Action("Display", "Product", new { area = "", id = product.Id }, Request.Scheme);
+                var summary = $"Giá: {product.DiscountedPrice:N0}₫" +
+                              (product.DiscountPercent > 0 ? $" (Giảm {product.DiscountPercent}%)" : "");
+
+                await _chatHub.Clients.All.SendAsync(
+                    "ReceiveProductNotification",
+                    $"Sản phẩm mới: {product.Name}",            // title
+                    summary,                                    // summary
+                    url,                                        // url xem chi tiết
+                    DateTime.Now.ToString("dd/MM/yyyy HH:mm")   // time
+                );
+
                 TempData["SuccessMessage"] = "Sản phẩm đã được thêm thành công!";
                 return RedirectToAction(nameof(Index));
             }
@@ -178,6 +200,20 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
                 existingProduct.MinStockLevel = product.MinStockLevel;
 
                 await _productRepository.UpdateAsync(existingProduct);
+
+                // 🔔 PUSH: Cập nhật sản phẩm
+                var url = Url.Action("Display", "Product", new { area = "", id = existingProduct.Id }, Request.Scheme);
+                var summary = $"Giá: {existingProduct.DiscountedPrice:N0}₫" +
+                              (existingProduct.DiscountPercent > 0 ? $" (Giảm {existingProduct.DiscountPercent}%)" : "");
+
+                await _chatHub.Clients.All.SendAsync(
+                    "ReceiveProductNotification",
+                    $"Cập nhật: {existingProduct.Name}",         // title
+                    summary,                                    // summary
+                    url,                                        // url
+                    DateTime.Now.ToString("dd/MM/yyyy HH:mm")   // time
+                );
+
                 TempData["SuccessMessage"] = "Sản phẩm đã được cập nhật thành công!";
                 return RedirectToAction(nameof(Index));
             }
@@ -211,6 +247,8 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
             if (product == null)
                 return NotFound();
 
+            var name = product.Name;
+
             if (product.Images != null && product.Images.Any())
             {
                 foreach (var image in product.Images)
@@ -224,6 +262,16 @@ namespace WebBanDienThoai.Areas.Admin.Controllers
             }
 
             await _productRepository.DeleteAsync(id);
+
+            // 🔔 PUSH: Xóa sản phẩm (không có url)
+            await _chatHub.Clients.All.SendAsync(
+                "ReceiveProductNotification",
+                $"Đã xóa: {name}",
+                "Sản phẩm đã bị xóa khỏi hệ thống.",
+                null,
+                DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            );
+
             TempData["SuccessMessage"] = "Sản phẩm và ảnh liên kết đã được xóa thành công!";
             return RedirectToAction(nameof(Index));
         }
